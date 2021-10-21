@@ -48,13 +48,13 @@ void ConDBSCAN::ConvolutionY(Matrix2D& data, Matrix2D& localSum, int radius) {
 	int cols = data[0].size();
 
 	localSum.assign(rows, vector<int>(cols, 0));
-	// ��ʼ����������0��local_sum_0
+	// 初始化，计算第0列local_sum_0
 	for (int i = 0; i < rows; ++i) {
 		for (int j = 0; j <= radius; ++j) {
 			localSum[i][0] += data[i][j];
 		}
 	}
-	// ���ݹ�ʽ�����������е�local_sum_i
+	// 根据公式迭代求解所有的local_sum_i
 	for (int i = 0; i < rows; ++i) {
 		for (int j = 1; j < cols; ++j) {
 			if (j <= radius) {
@@ -84,11 +84,11 @@ void ConDBSCAN::QuickConvolute2D(Matrix2D& data, Matrix2D& conResult2D) {
  */
 void ConDBSCAN::QuickConvolute3D(Matrix3D& data, Matrix3D& conResult3D) {
 	int r = data.size(), c = data[0].size(), h = data[0][0].size();
-	// ������Z������ÿһ�����ж�ά����
+	// 首先对每一层进行二维卷积
 	for (int i = 0; i < r; ++i) {
 		QuickConvolute2D(data[i], conResult3D[i]);
 	}
-	// �Ծ������ľ�����һ��ά���ٴν���һά����
+	// 对二维卷积后的矩阵换一个维度再次进行卷积，得到三维卷积结果
 	for (int j = 0; j < c; ++j) {
 		Matrix2D temp(r), conResult2DY(r, vector<int>(h, 0));
 		for (int i = 0; i < r; ++i) {
@@ -128,7 +128,7 @@ double ConDBSCAN::GetDistance(Point3d p1, Point3d p2) {
 
 /**************************************public**************************************/
 
-// ���캯��
+// 构造函数
 ConDBSCAN::ConDBSCAN(const Point3i kernel, const int minpts) {
 	this->kernel = kernel;
 	this->minpts = minpts;
@@ -162,17 +162,16 @@ void ConDBSCAN::Fit(Matrix3D& colorMatrix, map<int, int>& dealed, set<int>& labe
 	map<int, bool> coreObjects;
 	GetCoreObjects(conResult3D, colorMatrix, coreObjects);
 
-	std::cout << "���Ķ��������� " << coreObjects.size() << endl;
+	std::cout << "核心对象个数： " << coreObjects.size() << endl;
 	end = clock();
-	std::cout << "����ʱ�� time = " << double(end - start) / CLOCKS_PER_SEC << "s" << endl;
+	std::cout << "卷积时间 time = " << double(end - start) / CLOCKS_PER_SEC << "s" << endl;
 
-	// colorMatrix.clear();
 	queue<Point3i> visits;
 	int tag = 0;
 	for (const auto core : coreObjects) {
-		// ��ǰ���Ķ����ѷ��ʹ���������
+		// 当前对象已访问，跳过
 		if (core.second) continue;
-		// ��������
+		// 解析坐标
 		int x = core.first / 1000000, y = core.first % 1000000 / 1000, z = core.first % 1000;
 		visits.push(Point3i(x, y, z));
 		coreObjects[core.first] = true;
@@ -184,11 +183,11 @@ void ConDBSCAN::Fit(Matrix3D& colorMatrix, map<int, int>& dealed, set<int>& labe
 			for (int i = now.x - kernelRadius.x; i <= now.x + kernelRadius.x; ++i) {
 				for (int j = now.y - kernelRadius.y; j <= now.y + kernelRadius.y; ++j) {
 					for (int k = now.z - kernelRadius.z; k <= now.z + kernelRadius.z; ++k) {
-						// ����Խ����ַ
+						// 跳过越界索引
 						if (i < 0 || j < 0 || k < 0 || i > 255 || j > 255 || k > 255) continue;
-						// �����ѷ���
+						// 跳过已访问对象
 						if (i <= last.x && j <= last.y && k <= last.z) continue;
-						// �����������㣬����δ������
+						// 如果是样本点，并且未访问
 						int key = i * 1000000 + j * 1000 + k;
 						if (dealed[key] == -1) {
 							dealed[key] = tag;
@@ -248,7 +247,7 @@ Mat ConDBSCAN::ClusterToSingleImage(set<int>& labels, map<int, int>& cluster, Ma
 			auto iter = cluster.find(key);
 			if (iter == cluster.end()) continue;
 			int label = iter->second;
-			// �����㣬��ɫ���ر�ʾ
+			// 噪声点
 			if (label == -1) segementation.at<Vec3b>(r, c) = Vec3b(153, 136, 139);
 			if (label >= colors.size()) continue;
 			segementation.at<Vec3b>(r, c) = Vec3b(colors[label+0][2], colors[label+0][1], colors[label+0][0]);
@@ -305,7 +304,6 @@ double ConDBSCAN::CalSilhouette(map<int, int>& results, unordered_map<int, int>&
 			b_score /= n;
 
 			si += (b_score - a_score) * origin[Point3dToInt(p)] / max(b_score, a_score);
-			// cout << (b_score - a_score) / max(b_score, a_score) << " ";
 		}
 	}
 
